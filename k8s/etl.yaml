@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: etl-app
+  labels:
+    app: etl-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: etl-app
+  template:
+    metadata:
+      labels:
+        app: etl-app
+    spec:
+      serviceAccountName: mcp-etl-sa
+      containers:
+      - name: etl-container
+        image: us-central1-docker.pkg.dev/throw-anything/mcp-etl/etl:latest
+        imagePullPolicy: Always
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        # use secrets or configmaps for production
+        env:
+          - name: CLOUD_PROVIDER
+            value: "GOOGLE"
+          - name: GCP_PROJECT_ID
+            value: UPDATE_YOUR_PROJECT_ID
+          - name: GCP_SUBSCRIPTION_ID
+            value: "mcp-etl-test-topic-sub"
+          - name: GCP_TOPIC_ID
+            value: "mcp-etl-test-topic"
+          - name: AWS_QUEUE_ID
+            value: SET_IF_USING_AWS
+          - name: AGENT_SERVICE_URL
+            value: "http://agent-service:80/transformation_error"
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/transform_tpl.py
+          subPath: transform_tpl.py
+      volumes:
+      - name: config-volume
+        configMap:
+          name: mcp-transform-tpl
+          items:
+          - key: code
+            path: transform_tpl.py
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mcp-etl-sa
+  namespace: default
+
+---
+apiVersion: v1
+data:
+  code: "def transform(data: dict) -> dict:\n    \"\"\"\n    Transform the input data.\n
+    \   The input data is expected to be a dictionary with specific keys.\n    This
+    function extracts the 'id', 'language', and 'version' fields from the input data.\n
+    \   If the 'version' field is not present, it defaults to 1.0.\n\n    :param data:
+    The input data to be transformed.\n    :return: The transformed data.\n    \"\"\"\n
+    \   if not isinstance(data, dict):\n        raise ValueError(\"Input data must
+    be a dictionary.\")\n \n    transformed_data = {\n        \"id\": data[\"id\"],\n
+    \       \"language\": data[\"language\"],\n        \"version\": data.get(\"version\",
+    1.0),\n    }\n    \n    return transformed_data"
+kind: ConfigMap
+metadata:
+  name: mcp-transform-tpl
+  namespace: default

@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-app
+  labels:
+    app: agent-app
+spec:
+  # ensure singleton deployment
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent-app
+  template:
+    metadata:
+      labels:
+        app: agent-app
+    spec:
+      serviceAccountName: mcp-agent-sa
+      containers:
+      - name: agent-container
+        image: us-central1-docker.pkg.dev/throw-anything/mcp-etl/agent:latest
+        imagePullPolicy: Always
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        env:
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: anthropic-api-key
+              key: ANTHROPIC_API_KEY
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mcp-agent-sa
+  namespace: default
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-service
+  labels:
+    app: agent-app
+spec:
+  selector:
+    app: agent-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
+  type: ClusterIP
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mcp-agent-role
+  namespace: default
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch", "update", "patch", "create"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch", "update", "patch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mcp-agent-rolebinding
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: mcp-agent-sa
+  namespace: default
+roleRef:
+  kind: Role
+  name: mcp-agent-role
+  apiGroup: rbac.authorization.k8s.io
