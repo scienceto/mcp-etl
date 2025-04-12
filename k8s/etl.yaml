@@ -17,7 +17,7 @@ spec:
       serviceAccountName: mcp-etl-sa
       containers:
       - name: etl-container
-        image: us-central1-docker.pkg.dev/throw-anything/mcp-etl/etl:latest
+        image: jheelp/mcp-etl:etl-latest
         imagePullPolicy: Always
         resources:
           requests:
