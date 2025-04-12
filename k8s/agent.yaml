@@ -18,7 +18,7 @@ spec:
       serviceAccountName: mcp-agent-sa
       containers:
       - name: agent-container
-        image: us-central1-docker.pkg.dev/throw-anything/mcp-etl/agent:latest
+        image: jheelp/mcp-etl:agent-latest
         imagePullPolicy: Always
         resources:
           requests:
