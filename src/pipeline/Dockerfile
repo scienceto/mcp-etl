@@ -13,8 +13,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the app files to the container
 COPY . /app
 
-# Remove the .env file
-RUN rm transform_tpl.py
-
 # Run app.py when the container launches
 CMD ["python", "main.py"]
